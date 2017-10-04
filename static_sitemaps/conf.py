@@ -44,7 +44,7 @@ CELERY_TASK_REPETITION = getattr(settings, 'STATICSITEMAPS_REFRESH_AFTER', 60)
 _url = getattr(settings, 'STATICSITEMAPS_URL', None)
 
 # Force the protocol to use with django sites framework
-FORCE_PROTOCOL = getattr(settings, 'STATICSITEMAPS_FORCE_PROTOCOL', None)
+FORCE_PROTOCOL = getattr(settings, 'STATICSITEMAPS_FORCE_PROTOCOL', 'https')
 
 # Mock django sites framework
 MOCK_SITE = getattr(settings, 'STATICSITEMAPS_MOCK_SITE', False)
@@ -53,7 +53,7 @@ MOCK_SITE = getattr(settings, 'STATICSITEMAPS_MOCK_SITE', False)
 MOCK_SITE_NAME = getattr(settings, 'STATICSITEMAPS_MOCK_SITE_NAME', None)
 
 # Mock django sites framework with https | https
-MOCK_SITE_PROTOCOL = getattr(settings, 'STATICSITEMAPS_MOCK_SITE_PROTOCOL', 'http')
+MOCK_SITE_PROTOCOL = getattr(settings, 'STATICSITEMAPS_MOCK_SITE_PROTOCOL', 'https')
 
 
 def get_url():
