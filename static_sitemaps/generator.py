@@ -32,24 +32,49 @@ class SitemapGenerator(object):
         self.has_changes = False
         self.storage = _lazy_load(conf.STORAGE_CLASS)(location=conf.ROOT_DIR)
         self.sitemaps = _lazy_load(conf.ROOT_SITEMAP)
+        self.site = self._get_site()
+        self.proto = self._get_proto()
 
         if not isinstance(self.sitemaps, dict):
             self.sitemaps = dict(enumerate(self.sitemaps))
 
     @staticmethod
+    def _get_site():
+        if conf.MOCK_SITE:
+            if conf.MOCK_SITE_NAME is None:
+                raise ImproperlyConfigured("STATICSITEMAPS_MOCK_SITE_NAME must not be None. Try setting to www.yoursite.com")
+            try:
+                from django.contrib.sites.requests import RequestSite
+            except ImportError:
+                # we're dealing w/ pre 1.7 Django
+                from django.contrib.sites.models import RequestSite
+            from django.test.client import RequestFactory
+            return RequestSite(RequestFactory().get('/', SERVER_NAME=conf.MOCK_SITE_NAME))
+        else:
+            from django.contrib.sites.models import Site
+            try:
+                return Site.objects.get_current()
+            except Site.DoesNotExist:
+                raise ImproperlyConfigured("To use sitemaps, either enable the sites framework or configure STATICSITEMAPS_MOCK_* settings")
+
+    @staticmethod
+    def _get_proto():
+        if conf.MOCK_SITE:
+            return conf.MOCK_SITE_PROTOCOL
+        return conf.FORCE_PROTOCOL
+
+    @staticmethod
     def get_hash(bytestream):
         return hashlib.md5(bytestream).digest()
 
-    @staticmethod
-    def normalize_url(url):
+    def normalize_url(self, url):
         if url[-1] != '/':
             url += '/'
         if not url.startswith(('http://', 'https://')):
             if url.startswith('/'):
-                from django.contrib.sites.models import Site
-                url = 'http://' + Site.objects.get_current().domain + url
+                url = '%s://%s%s' % (self.proto, self.site.domain, url)
             else:
-                url = 'http://' + url
+                url = '%s://%s' % (self.proto, url)
         return url
 
     def _write(self, path, output):
@@ -125,23 +150,11 @@ class SitemapGenerator(object):
         old_page_md5 = None
         urls = []
 
-        if conf.MOCK_SITE:
-            if conf.MOCK_SITE_NAME is None:
-                raise ImproperlyConfigured("STATICSITEMAPS_MOCK_SITE_NAME must not be None. Try setting to www.yoursite.com")
-            from django.contrib.sites.requests import RequestSite
-            from django.test.client import RequestFactory
-            rs = RequestSite(RequestFactory().get('/', SERVER_NAME=conf.MOCK_SITE_NAME))
         try:
             if callable(site):
-                if conf.MOCK_SITE:
-                    urls.extend(site().get_urls(page, rs, protocol=conf.MOCK_SITE_PROTOCOL))
-                else:
-                    urls.extend(site().get_urls(page, protocol=conf.FORCE_PROTOCOL))
+                urls.extend(site().get_urls(page, self.site, protocol=self.proto))
             else:
-                if conf.MOCK_SITE:
-                    urls.extend(site.get_urls(page, rs, protocol=conf.MOCK_SITE_PROTOCOL))
-                else:
-                    urls.extend(site.get_urls(page, protocol=conf.FORCE_PROTOCOL))
+                urls.extend(site.get_urls(page, self.site, protocol=self.proto))
         except EmptyPage:
             self.out("Page %s empty" % page)
         except PageNotAnInteger:
