@@ -1,10 +1,5 @@
 from __future__ import print_function
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
-
 import gzip
 import hashlib
 import os
